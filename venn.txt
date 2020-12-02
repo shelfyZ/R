@@ -1,0 +1,54 @@
+#-------------1.加载包------------------
+pacman::p_load(tidyverse,ggplot2,RColorBrewer,ggvenn,ggsci,cowplot,clusterProfiler,
+               org.At.tair.db,patchwork,ggpubr)
+
+
+#-------------2.venn图------------------
+pro_per <- read.csv("~/workspace/zxf/3.选出生殖上调基因Fig3/repro_pre.csv",
+                    header = T,row.names = 1)
+m_f <- read.csv("~/workspace/zxf/vegUrep_res.csv",header = T) %>%
+                filter(Significant.M_F.=='yes' & U.D.M_F.=='up')
+
+pro_per_list <- pull(pro_per,'gene')
+m_f_list <- pull(m_f,'vegetative.reproductive')
+
+x=list(pro=pro_per_list,mf=m_f_list)
+
+p1 <- ggvenn(x,c('pro','mf'),fill_alpha = 0.7,set_name_size = 5)+
+      scale_fill_npg()
+
+
+#-------------2.读取数据------------------
+malepre_vs_lf <- read.csv('雄上调.csv', header = T) %>%
+  select('reprodctive..UP..M.vs.F..UP.')
+colnames(malepre_vs_lf)[3] = 'malepre_lf'
+#-------------3.整理数据------------------
+gene <-  pull(malepre_vs_lf,'malepre_lf')
+
+
+#-------------4.GO富集 作图------------------
+malepre_lf_go<- enrichGO(gene = gene,
+                        OrgDb = "org.At.tair.db", 
+                        keyType="TAIR", ont = 'ALL')
+ 
+p4<-dotplot(malepre_lf_go,showCategory = 10)+
+  scale_color_distiller(palette = "Spectral",direction = 1)+
+  #facet_grid(ONTOLOGY~.,scales = 'free')+
+  scale_y_discrete(labels=function(x) str_wrap(x, width=35))+
+  theme_pubr(border = T,legend = "right")+
+  labs(title = 'GO enrichment of male preferential genes(1632)')
+
+
+#-------------5.KEGG富集 作图------------------
+malepre_lf_kegg <- enrichKEGG(gene = gene,
+                          keyType = "kegg",
+                          organism  = 'ath',
+                          pvalueCutoff  = 1,
+                          pAdjustMethod  = "BH",
+                          qvalueCutoff  = 1 )
+malepre_lf_kegg1 <- as.data.frame(malepre_lf_kegg)
+
+p4<-barplot(malepre_lf_kegg,showCategory = 10)+
+  scale_fill_distiller(palette = "Spectral",direction = 1)+
+  scale_x_discrete(labels=function(x) str_wrap(x, width=35))+
+  theme_pubr(border = T,legend = "right")
